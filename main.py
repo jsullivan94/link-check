@@ -1,15 +1,17 @@
 from google_sheet import *
+from amazon import *
 
-class GoogleSheetsClient: 
-    def __init__(self):
-        self.creds = check_creds()
-        self.links = get_links(self.creds)
-        self.checked_list = []
 
-class Amazon:
+
+class Robots:
     pass
 
+
+
 if __name__ == "__main__":
-    client = GoogleSheetsClient()
-    print("Links:", client.links)
-    print("Checked List:", client.checked_list)
+    links_from_google_sheet = GoogleSheetsClient().get_amazon_links()
+    AmazonSeleniumRobot().check_product_availablility_for(links_from_google_sheet)
+
+
+
+     

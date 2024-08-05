@@ -13,48 +13,75 @@ SCOPES = [os.getenv('SCOPES')]
 SPREADSHEET_ID = os.getenv('SPREADSHEET_ID')
 RANGE_NAME = os.getenv('RANGE_NAME')
 
-def check_creds():
-    creds = None
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                "credentials.json", SCOPES
-            )
-            creds = flow.run_local_server(port=0)
-        with open("token.json", "w") as token:
-            token.write(creds.to_json())
-    return creds
-    
-def get_links(creds):
-    service = build("sheets", "v4", credentials=creds)
-    links = []  
-       
-    spreadsheet = service.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
-    sheets = spreadsheet.get('sheets', [])
+class GoogleSheetsClient: 
+    def __init__(self):
+        self.creds = self.check_creds()
+        self.links = self.get_links()
+        self.checked_list = []
 
-    for sheet in sheets:
-        sheet_title = sheet.get('properties', {}).get('title', 'No Title')
-        sheet_id = sheet.get('properties', {}).get('sheetId', 'No ID')
-        print(f"Sheet Title: {sheet_title}, Sheet ID: {sheet_id}")
+    def check_creds(self):
+        creds = None
+        if os.path.exists("token.json"):
+            creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    "credentials.json", SCOPES
+                )
+                creds = flow.run_local_server(port=0)
+            with open("token.json", "w") as token:
+                token.write(creds.to_json())
+        return creds
+        
+    def get_links(self):
+        service = build("sheets", "v4", credentials=self.creds)
+        links = []  
+        
+        spreadsheet = service.spreadsheets().get(spreadsheetId=SPREADSHEET_ID).execute()
+        sheets = spreadsheet.get('sheets', [])
 
-    sheet = service.spreadsheets()
-    result = (
-        sheet.values()
-        .get(spreadsheetId=SPREADSHEET_ID, range=RANGE_NAME)
-        .execute()
-    )
-    values = result.get("values", [])
+        for sheet in sheets:
+            sheet_title = sheet.get('properties', {}).get('title', 'No Title')
+            sheet_id = sheet.get('properties', {}).get('sheetId', 'No ID')
+            # print(f"Sheet Title: {sheet_title}, Sheet ID: {sheet_id}")
 
-    if not values:
-        print("No data found.")
-        return
-    
-    links.append(values)
-    print(links)
+        sheet = service.spreadsheets()
+        result = (
+            sheet.values()
+            .get(spreadsheetId=SPREADSHEET_ID, range=RANGE_NAME)
+            .execute()
+        )
+        values = result.get("values", [])
 
+        if not values:
+            print("No data found.")
+            return
+        
+        links.append(values)
+        return links
+
+    def flatten_list(self, links):
+        flat_list = []
+        for item in links:
+            if isinstance(item, list):
+                flat_list.extend(self.flatten_list(item))
+            else:
+                flat_list.append(item)
+        return flat_list
+
+
+    def get_amazon_links(self):
+        amazon_links = []
+
+        flat_links = self.flatten_list(self.links)
+        
+        for link in flat_links:
+            link_str = str(link[0]) if isinstance(link, list) and link else str(link)
+            if 'amazon' in link_str or 'amzn' in link_str:
+                amazon_links.append(link)
+        return amazon_links
+        
     
     
